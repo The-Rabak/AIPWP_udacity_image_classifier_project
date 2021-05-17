@@ -155,7 +155,12 @@ def process_image(image, add_batch=True):
         image = image.float()
         return image
 
-                                
+
+
+''' 
+A more condensed and elegant form of process_image
+uses existing validation transformers instead of performing calculations from scratch
+'''
 def process_transform_images(img_path):
                                 
     with Image.open(img_path) as img:
@@ -213,7 +218,7 @@ def validate_model(model, dataset, test_device = None):
             ps = torch.exp(output)
             equality = (labels.data == ps.max(1)[1])
             accuracy += torch.mean(equality.type(torch.FloatTensor))
-    print(f'Accuracy of the network: {(accuracy / len(dataset) * 100):.3f}%')
+    print(f'Model accuracy at: {(accuracy / len(dataset) * 100):.3f}%')
 
             
 
