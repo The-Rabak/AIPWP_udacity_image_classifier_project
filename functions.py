@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import os
 from torchvision import datasets, transforms, models
 from PIL import Image
+import time
 from rabak_net import RabakNetwork
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,6 +36,10 @@ def get_data_loader(dataset, batch_size=40, shuffle = True, pin_memory = True):
 
 def train(model, trainloader, testloader, criterion, optimizer, epochs = 5, print_every_n = 40 ):
 
+    if device == 'cuda':
+        torch.cuda.empty_cache()
+
+    train_start_time = time.perf_counter()
     steps = 0
     running_loss = 0
     model = model.to(device)
@@ -69,7 +74,9 @@ def train(model, trainloader, testloader, criterion, optimizer, epochs = 5, prin
                 running_loss = 0
                 #turn gradients back on
                 model.train()
-    return running_losses, test_losses 
+
+    print(f'classifier runtime: {time.perf_counter() - train_start_time}')
+    return running_losses, test_losses
 
 
 def validate(model, validationloader, criterion):
@@ -220,10 +227,13 @@ def load_rabak_network_checkpoint(filepath):
     model.fc = checkpoint['rabak_classifier']
     model.class_to_idx = checkpoint['class_to_idx']
     optimizer = optim.__dict__[checkpoint['optimizer']](model.fc.parameters(), lr=checkpoint['hyper_params']['lr'])
-    optimizer.load_state_dict(checkpoint['optimizer_dict'])           
+    #for some reason, loading the state_dict was setting the optimizer on cpu while the rest of the tensors were on cuda,
+    #this was causing an error so I had to drop it.
+    #optimizer.load_state_dict(checkpoint['optimizer_dict'])
     loss = checkpoint['loss']
     dataloaders = checkpoint['dataloaders']
     hyper_params = checkpoint['hyper_params']
+    #recommended for avoiding cuda GPU memory overload errors
     del checkpoint
     return model, optimizer, loss, dataloaders, hyper_params
 
