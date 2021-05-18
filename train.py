@@ -1,12 +1,8 @@
-import matplotlib.pyplot as plt
 from torch import nn
-from torch import optim
 from collections import OrderedDict
-import json
 
 from consts.consts import optimizer_name, test_image_size as image_size
 import functions.functions as myF
-
 
 input_args = myF.get_default_input_args()
 model_name = input_args.arch
