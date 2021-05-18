@@ -1,16 +1,115 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from torch import nn
 from torch import optim
-import torch.nn.functional as F
 import os
 from torchvision import datasets, transforms, models
 from PIL import Image
 import time
-from rabak_net import RabakNetwork
+from collections import OrderedDict
+
+from classes.rabak_net import RabakNetwork
+from consts.consts import model_name, data_dir, default_is_gpu_on, default_epochs, default_lr, default_hidden_units, \
+    checkpoint_dir, checkpoint_file_name
+from classes.CommandArgs import CommandArgs
+from classes.ParseArgs import ParseArgs
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def get_frozen_model(model_name, classifier):
+    if model_name == "resnet101":
+        model = models.resnet101(pretrained=True)
+    elif model_name == "resnet50":
+        model = models.resnet50(pretrained=True)
+    elif model_name == "resnet18":
+        model = models.resnet18(pretrained=True)
+    elif model_name == "vgg16":
+        model = models.vgg16(pretrained=True)
+    elif model_name == "vgg13":
+        model = models.vgg13(pretrained=True)
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    if "resnet" in model_name:
+        model.fc = classifier
+    elif "vgg" in model_name:
+        model.classifier = classifier
+
+    return model
+
+def get_model_input_sizes(model_name):
+    if "resnet" in model_name:
+        model_input_sizes = OrderedDict([('input', 2048), ('output', 102)])
+    elif "vgg" in model_name:
+        model_input_sizes = OrderedDict([('input', 25088), ('output', 102)])
+    return model_input_sizes
+
+def get_rabak_classifier(hyper_params):
+    return RabakNetwork(hyper_params['model_input_sizes']['input'],
+                                   hyper_params['model_input_sizes']['output'],
+                                   hyper_params['classifier_hidden_layers'])
+
+
+def get_optimizer(model, model_name, lr):
+    if "resnet" in model_name:
+        optimizer = optim.AdamW(model.fc.parameters(), lr)
+    elif "vgg" in model_name:
+        optimizer = optim.AdamW(model.classifier.parameters(), lr)
+    return optimizer
+
+def get_default_input_args():
+    arch_models = {
+        "vgg13": "vgg13",
+        "vgg16": "vgg16",
+        "resnet18": "resnet18",
+        "resnet50": "resnet50",
+        "resnet101": "resnet101",
+    }
+    arch_arg = CommandArgs(["-a", "--arch"], str, choices=arch_models,
+                           help="choose a proper architecture model from one of these: " + ", ".join(
+                               arch_models.keys()),
+                           default="resnet101"
+                           )
+
+    save_dir_arg = CommandArgs(["-d", "--save_dir"], str,
+                               help="provide a directory for saving and loading models",
+                               default=checkpoint_dir
+                               )
+
+    checkpoint_name_arg = CommandArgs(["-c", "--checkpoint_name"], str,
+                               help="provide a directory for saving and loading models",
+                               default=checkpoint_file_name
+                               )
+
+    learn_rate_arg = CommandArgs(["-l", "--learning_rate"], float,
+                                 help="provide a learning rate scalar for training models",
+                                 default=default_lr
+                                 )
+
+    hidden_units_arg = CommandArgs(["-u", "--hidden_units"], str,
+                                   help="provide a number of hidden units for hidden model",
+                                   default=default_hidden_units
+                                   )
+
+    epochs_arg = CommandArgs(["-e", "--epochs"], int,
+                             help="provide a number of epochs for training loop",
+                             default=default_epochs
+                             )
+
+    gpu_arg = CommandArgs(["-g", "--gpu"], bool,
+                          help="should we use gpu (if available) for training?",
+                          default=default_is_gpu_on
+                          )
+
+    images_dir_arg = CommandArgs(["-i", "--images_dir"], bool,
+                                 help="please provide a directory with valid, test and train subdirs for model",
+                                 default=data_dir
+                                 )
+    ArgsParser = ParseArgs([arch_arg, save_dir_arg, learn_rate_arg, hidden_units_arg, epochs_arg,
+                            gpu_arg, checkpoint_name_arg, images_dir_arg])
+    ArgsParser.set_args()
+    return ArgsParser.get_args()
 
 def get_training_transofrmers(image_size=(224,224)):
     return transforms.Compose([transforms.RandomRotation(13),
@@ -34,8 +133,17 @@ def get_datasets_imagefolder(image_dir, transformers):
 def get_data_loader(dataset, batch_size=40, shuffle = True, pin_memory = True):
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=pin_memory)
 
-def train(model, trainloader, testloader, criterion, optimizer, epochs = 5, print_every_n = 40 ):
+def get_train_dir_path(main_dir):
+    return main_dir + "/train"
+def get_test_dir_path(main_dir):
+    return main_dir + "/test"
+def get_validation_dir_path(main_dir):
+    return main_dir + "/valid"
 
+def train(model, trainloader, testloader, criterion, optimizer, epochs = 5, print_every_n = 40, use_gpu=True ):
+
+
+    device = torch.device("cuda" if torch.cuda.is_available() and use_gpu else "cpu")
     if device == 'cuda':
         torch.cuda.empty_cache()
 
@@ -75,7 +183,7 @@ def train(model, trainloader, testloader, criterion, optimizer, epochs = 5, prin
                 #turn gradients back on
                 model.train()
 
-    print(f'classifier runtime: {time.perf_counter() - train_start_time}')
+    print(f'classifier runtime: {time.perf_counter() - train_start_time} seconds')
     return running_losses, test_losses
 
 
@@ -98,15 +206,10 @@ def validate(model, validationloader, criterion):
 
 
 def save_model(model, model_name, optimizer, optimizer_name, loss, dataloaders,  file_name):
-    checkpoint = {'hyper_params': model.hyper_params,
-              'class_to_idx': model.class_to_idx,
-              'optimizer_dict': optimizer.state_dict(),
-              'optimizer': optimizer_name,
-              'loss': loss,
-              'dataloaders': dataloaders,
-              'rabak_classifier': model.fc,    
-              'model': model_name,
-              'state_dict': model.state_dict()}
+    checkpoint = {'hyper_params': model.hyper_params, 'class_to_idx': model.class_to_idx,
+                  'optimizer_dict': optimizer.state_dict(), 'optimizer': optimizer_name, 'loss': loss,
+                  'dataloaders': dataloaders, 'model': model_name, 'state_dict': model.state_dict(),
+                  'rabak_classifier': model.fc if "resnet" in model_name else model.classifier}
 
     torch.save(checkpoint, file_name)
     
@@ -229,7 +332,10 @@ def load_rabak_network_checkpoint(filepath):
 
     for param in model.parameters():
         param.requires_grad = False
-    model.fc = checkpoint['rabak_classifier']
+    if "resnet" in model_name:
+        model.fc = checkpoint['rabak_classifier']
+    else:
+        model.classifier = checkpoint['rabak_classifier']
     model.class_to_idx = checkpoint['class_to_idx']
     optimizer = optim.__dict__[checkpoint['optimizer']](model.fc.parameters(), lr=checkpoint['hyper_params']['lr'])
     #for some reason, loading the state_dict was setting the optimizer on cpu while the rest of the tensors were on cuda,
