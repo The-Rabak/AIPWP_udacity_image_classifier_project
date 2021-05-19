@@ -12,3 +12,5 @@ default_lr = 0.001
 default_hidden_units = 512
 default_epochs = 4
 default_is_gpu_on = True
+default_prediction_topk = 3
+default_cat_to_names_file = "assets/cat_to_name.json"

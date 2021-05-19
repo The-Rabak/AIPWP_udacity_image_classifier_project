@@ -4,7 +4,7 @@ from collections import OrderedDict
 from consts.consts import optimizer_name, test_image_size as image_size
 import functions.functions as myF
 
-input_args = myF.get_default_input_args()
+input_args = myF.get_train_default_input_args()
 model_name = input_args.arch
 hyper_params = OrderedDict([('epochs', int(input_args.epochs)), ('lr', float(input_args.learning_rate)), ('classifier_hidden_layers', list(map(int, str(input_args.hidden_units).strip('[]').split(','))))])
 model_input_sizes = myF.get_model_input_sizes(model_name)
@@ -28,15 +28,14 @@ image_datasets = OrderedDict([('train', train_data), ('test', test_data), ('vali
 trainloader = myF.get_data_loader(image_datasets['train'])
 validationloader = myF.get_data_loader(image_datasets['validate'])
 testloader = myF.get_data_loader(image_datasets['test'])
-
 dataloaders = OrderedDict([('train', trainloader), ('test', testloader), ('validate', validationloader)])
-print(hyper_params)
+
 classifier = myF.get_rabak_classifier(hyper_params)
 model = myF.get_frozen_model(model_name, classifier)
 
 criterion = nn.NLLLoss()
 optimizer = myF.get_optimizer(model, model_name, hyper_params['lr'])
-train_losses, test_losses = myF.train(model, dataloaders['train'], dataloaders['validate'], criterion, optimizer, hyper_params['epochs'], use_gpu=input_args.gpu)
+myF.train(model, dataloaders['train'], dataloaders['validate'], criterion, optimizer, hyper_params['epochs'], use_gpu=input_args.gpu)
 
 def save_trained_model(checkpoint_dir, checkpoint_name):
     model.class_to_idx = image_datasets['train'].class_to_idx
