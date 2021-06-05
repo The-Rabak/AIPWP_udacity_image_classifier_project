@@ -28,6 +28,7 @@ class ParseArgs():
                                     nargs='?', const=''
                                     )
 
+
     def get_args(self):
         return self.parser.parse_args()
 

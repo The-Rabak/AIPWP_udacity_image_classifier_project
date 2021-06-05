@@ -120,7 +120,6 @@ def get_train_default_input_args():
 
 
 def get_predict_default_input_args():
-
     default_validation_dir = get_validation_dir_path(data_dir)
 
     test_image, label_dir = get_random_image_and_label(default_validation_dir)
@@ -322,11 +321,13 @@ def process_transform_images(img_path):
         # return as float tensor with extra dimension to indicate batch size, which the model expects
         return transformer(img).unsqueeze(0).type(torch.FloatTensor)
 
+
 def get_results_dataframe(predictions, labels):
     return pd.DataFrame({
         'labels': pd.Series(data=labels),
         'predictions': pd.Series(data=predictions, dtype='float64').round(3)
     })
+
 
 def predict(image_path, model, topk=5, use_gpu=True):
     image = process_transform_images(image_path)
@@ -380,10 +381,12 @@ def validate_model(model, dataset, test_device=None):
             accuracy += torch.mean(equality.type(torch.FloatTensor))
     print(f'Model accuracy at: {(accuracy / len(dataset) * 100):.3f}%')
 
+
 def get_category_names_from_file(file_path):
     with open(file_path, 'r') as f:
         cat_to_name = json.load(f)
     return cat_to_name
+
 
 def load_rabak_network_checkpoint(filepath):
     checkpoint = torch.load(filepath)

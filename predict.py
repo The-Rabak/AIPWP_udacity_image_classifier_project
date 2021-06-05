@@ -6,6 +6,7 @@ model, optimizer, criterion, dataloaders,  hyper_params = myF.load_rabak_network
 
 category_names = myF.get_category_names_from_file(input_args.category_names)
 
+
 predictions, classes = myF.predict(input_args.image, model, topk=input_args.top_k, use_gpu=input_args.gpu)
 
 labels = [category_names[classes[i]] for i in range(len(classes))]

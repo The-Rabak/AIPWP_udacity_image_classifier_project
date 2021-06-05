@@ -6,10 +6,10 @@ import functions.functions as myF
 
 input_args = myF.get_train_default_input_args()
 model_name = input_args.arch
-hyper_params = OrderedDict([('epochs', int(input_args.epochs)), ('lr', float(input_args.learning_rate)), ('classifier_hidden_layers', list(map(int, str(input_args.hidden_units).strip('[]').split(','))))])
+hyper_params = OrderedDict([('epochs', int(input_args.epochs)), ('lr', float(input_args.learning_rate)), (
+'classifier_hidden_layers', list(map(int, str(input_args.hidden_units).strip('[]').split(','))))])
 model_input_sizes = myF.get_model_input_sizes(model_name)
 hyper_params['model_input_sizes'] = model_input_sizes
-
 
 data_dir = input_args.images_dir
 train_transforms = myF.get_training_transofrmers(image_size)
@@ -35,15 +35,18 @@ model = myF.get_frozen_model(model_name, classifier)
 
 criterion = nn.NLLLoss()
 optimizer = myF.get_optimizer(model, model_name, hyper_params['lr'])
-myF.train(model, dataloaders['train'], dataloaders['validate'], criterion, optimizer, hyper_params['epochs'], use_gpu=input_args.gpu)
+myF.train(model, dataloaders['train'], dataloaders['validate'], criterion, optimizer, hyper_params['epochs'],
+          use_gpu=input_args.gpu)
+
 
 def save_trained_model(checkpoint_dir, checkpoint_name):
     model.class_to_idx = image_datasets['train'].class_to_idx
     model.hyper_params = hyper_params
     model.input_sizes = model_input_sizes
-    myF.save_model(model, model_name, optimizer, optimizer_name, criterion, dataloaders, checkpoint_dir + "/" + checkpoint_name)
+    myF.save_model(model, model_name, optimizer, optimizer_name, criterion, dataloaders,
+                   checkpoint_dir + "/" + checkpoint_name)
+
 
 save_trained_model(input_args.save_dir, input_args.checkpoint_name)
 
 print("model trained and saved successfully")
-
