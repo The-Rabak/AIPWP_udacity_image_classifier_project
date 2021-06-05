@@ -109,7 +109,7 @@ def get_train_default_input_args():
                           default=default_is_gpu_on
                           )
 
-    images_dir_arg = CommandArgs(["-i", "--images_dir"], bool,
+    images_dir_arg = CommandArgs([], bool,
                                  help="please provide a directory with valid, test and train subdirs for model",
                                  default=data_dir
                                  )
@@ -120,16 +120,17 @@ def get_train_default_input_args():
 
 
 def get_predict_default_input_args():
+
     default_validation_dir = get_validation_dir_path(data_dir)
 
     test_image, label_dir = get_random_image_and_label(default_validation_dir)
     default_image_path = default_validation_dir + "/" + label_dir + "/" + test_image
-    arch_arg = CommandArgs(["image"], str,
+    arch_arg = CommandArgs([], str,
                            help="provide a valid image path to predict on",
                            default=default_image_path
                            )
 
-    save_dir_arg = CommandArgs(["checkpoint"], str,
+    save_dir_arg = CommandArgs(["--checkpoint"], str,
                                help="provide a full path for and loading model",
                                default=checkpoint_path
                                )
@@ -274,9 +275,7 @@ def get_random_image_and_label(path):
 
 
 def process_image(image, add_batch=True):
-    ''' Scales, crops, and normalizes a PIL image for a PyTorch model,
-        returns an Numpy array
-    '''
+
     with Image.open(image) as im:
         im = im.resize((256, 256))
         width, height = im.width, im.height
@@ -313,21 +312,17 @@ def process_image(image, add_batch=True):
 A more condensed and elegant form of process_image
 uses existing validation transformers instead of performing calculations from scratch
 '''
-
-
 def process_transform_images(img_path):
     with Image.open(img_path) as img:
         transformer = get_validation_transformers()
         # return as float tensor with extra dimension to indicate batch size, which the model expects
         return transformer(img).unsqueeze(0).type(torch.FloatTensor)
 
-
 def get_results_dataframe(predictions, labels):
     return pd.DataFrame({
         'labels': pd.Series(data=labels),
         'predictions': pd.Series(data=predictions, dtype='float64').round(3)
     })
-
 
 def predict(image_path, model, topk=5, use_gpu=True):
     image = process_transform_images(image_path)
@@ -381,12 +376,10 @@ def validate_model(model, dataset, test_device=None):
             accuracy += torch.mean(equality.type(torch.FloatTensor))
     print(f'Model accuracy at: {(accuracy / len(dataset) * 100):.3f}%')
 
-
 def get_category_names_from_file(file_path):
     with open(file_path, 'r') as f:
         cat_to_name = json.load(f)
     return cat_to_name
-
 
 def load_rabak_network_checkpoint(filepath):
     checkpoint = torch.load(filepath)

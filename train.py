@@ -6,8 +6,10 @@ import functions.functions as myF
 
 input_args = myF.get_train_default_input_args()
 model_name = input_args.arch
-hyper_params = OrderedDict([('epochs', int(input_args.epochs)), ('lr', float(input_args.learning_rate)), (
-'classifier_hidden_layers', list(map(int, str(input_args.hidden_units).strip('[]').split(','))))])
+hyper_params = OrderedDict([('epochs', int(input_args.epochs)),
+                            ('lr', float(input_args.learning_rate)),
+                            ('classifier_hidden_layers',
+                             list(map(int, str(input_args.hidden_units).strip('[]').split(','))))])
 model_input_sizes = myF.get_model_input_sizes(model_name)
 hyper_params['model_input_sizes'] = model_input_sizes
 

@@ -14,6 +14,16 @@ class ParseArgs():
         for arg in self.args:
             if not isinstance(arg, CommandArgs):
                 continue
+            #the default first argument for both the predict and train files
+            #As requested by the venerable Udacity team
+            if len(arg.flags) == 0:
+                self.parser.add_argument("images_dir",
+                                         help=arg.get_help(),
+                                         default=arg.get_default(),
+                                         nargs='?', const=''
+                                         )
+                continue
+
             if len(arg.choices) > 0:
                 self.parser.add_argument(*arg.flags,
                                     choices=arg.choices,
@@ -27,7 +37,6 @@ class ParseArgs():
                                     default=arg.get_default(),
                                     nargs='?', const=''
                                     )
-
 
     def get_args(self):
         return self.parser.parse_args()
