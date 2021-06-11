@@ -12,7 +12,7 @@ from collections import OrderedDict
 import pandas as pd
 
 from classes.rabak_net import RabakNetwork
-from consts.consts import model_name, data_dir, default_is_gpu_on, default_epochs, default_lr, default_hidden_units, \
+from consts.consts import  data_dir, default_is_gpu_on, default_epochs, default_lr, default_hidden_units, \
     checkpoint_dir, checkpoint_file_name, checkpoint_path, default_prediction_topk, default_cat_to_names_file
 from classes.CommandArgs import CommandArgs
 from classes.ParseArgs import ParseArgs
